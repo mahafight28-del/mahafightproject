@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  mahafight-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: mahafight-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      - DB_HOST=mahafight-db
+      - DB_NAME=MahaFightDB
+      - DB_USER=mahafight_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./uploads:/var/www/mahafight/uploads
+      - ./certs:/https:ro
+    depends_on:
+      - mahafight-db
+    networks:
+      - mahafight-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  mahafight-db:
+    image: postgres:15-alpine
+    container_name: mahafight-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=MahaFightDB
+      - POSTGRES_USER=mahafight_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/sample-data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    networks:
+      - mahafight-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  nginx:
+    image: nginx:alpine
+    container_name: mahafight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - mahafight-api
+    networks:
+      - mahafight-network
+
+volumes:
+  postgres_data:
+
+networks:
+  mahafight-network:
+    driver: bridge

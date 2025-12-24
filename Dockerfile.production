@@ -1,0 +1,46 @@
+# Production Dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+# Create non-root user
+RUN addgroup --system --gid 1001 mahafight
+RUN adduser --system --uid 1001 --ingroup mahafight mahafight
+
+# Create upload directory
+RUN mkdir -p /var/www/mahafight/uploads && \
+    chown -R mahafight:mahafight /var/www/mahafight
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files
+COPY ["src/MahaFight.WebApi/MahaFight.WebApi.csproj", "src/MahaFight.WebApi/"]
+COPY ["src/MahaFight.Application/MahaFight.Application.csproj", "src/MahaFight.Application/"]
+COPY ["src/MahaFight.Domain/MahaFight.Domain.csproj", "src/MahaFight.Domain/"]
+COPY ["src/MahaFight.Infrastructure/MahaFight.Infrastructure.csproj", "src/MahaFight.Infrastructure/"]
+
+# Restore dependencies
+RUN dotnet restore "src/MahaFight.WebApi/MahaFight.WebApi.csproj"
+
+# Copy source code
+COPY . .
+WORKDIR "/src/src/MahaFight.WebApi"
+
+# Build and publish
+RUN dotnet build "MahaFight.WebApi.csproj" -c Release -o /app/build
+RUN dotnet publish "MahaFight.WebApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Switch to non-root user
+USER mahafight
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/api/health || exit 1
+
+ENTRYPOINT ["dotnet", "MahaFight.WebApi.dll"]

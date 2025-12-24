@@ -1,0 +1,22 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.log
+logs/
+.env
+*.pfx
+*.p12
+launchSettings.json
+
+# Frontend
+node_modules/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

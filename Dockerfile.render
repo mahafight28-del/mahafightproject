@@ -1,0 +1,28 @@
+# Use the official .NET 8 SDK image
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
+
+# Copy csproj files and restore dependencies
+COPY src/MahaFight.Domain/MahaFight.Domain.csproj src/MahaFight.Domain/
+COPY src/MahaFight.Application/MahaFight.Application.csproj src/MahaFight.Application/
+COPY src/MahaFight.Infrastructure/MahaFight.Infrastructure.csproj src/MahaFight.Infrastructure/
+COPY src/MahaFight.WebApi/MahaFight.WebApi.csproj src/MahaFight.WebApi/
+
+RUN dotnet restore src/MahaFight.WebApi/MahaFight.WebApi.csproj
+
+# Copy source code
+COPY src/ src/
+
+# Build and publish
+RUN dotnet publish src/MahaFight.WebApi/MahaFight.WebApi.csproj -c Release -o out
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/out .
+
+# Expose port
+EXPOSE $PORT
+
+# Start the application
+ENTRYPOINT ["dotnet", "MahaFight.WebApi.dll"]
