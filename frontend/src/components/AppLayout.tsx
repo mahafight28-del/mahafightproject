@@ -57,7 +57,7 @@ const AppLayout: React.FC = () => {
       <Sider>
         <div style={{ height: 64, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', backgroundColor: '#000' }}>
           <img 
-            src="/src/assets/IMG_9357.JPG" 
+            src="/logo.jpg" 
             alt="MAHA FIGHT" 
             style={{ height: 40, marginRight: 8 }} 
           />

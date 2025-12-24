@@ -23,7 +23,7 @@ const Login: React.FC = () => {
       <Card style={{ maxWidth: 420, width: '100%', margin: '0 16px' }}>
         <div style={{ textAlign: 'center', marginBottom: 24, padding: '20px', borderRadius: '8px' }}>
           <img 
-            src="/src/assets/IMG_9357.JPG" 
+            src="/logo.jpg" 
             alt="MAHA FIGHT" 
             style={{ height: 80, marginBottom: 16 }} 
           />
