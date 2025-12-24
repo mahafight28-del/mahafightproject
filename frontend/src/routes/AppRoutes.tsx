@@ -61,6 +61,7 @@ export const AppRoutes: React.FC = () => {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<ProductCatalog />} />
+            <Route path="/admin" element={<Navigate to="/login" replace />} />
             <Route path="/products/:id" element={<PublicProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             
