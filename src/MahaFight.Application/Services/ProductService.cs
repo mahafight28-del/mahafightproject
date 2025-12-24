@@ -59,10 +59,19 @@ public class ProductService
 
         var created = await _productRepository.AddAsync(product);
 
-        // Generate QR code
-        var qrData = $"https://mahafight.com/products/{created.Id}";
-        var qrFileName = $"product_{created.Id}";
-        var qrCodePath = await _qrCodeService.GenerateQrCodeAsync(qrData, qrFileName);
+        // Generate QR code (optional - don't fail if it doesn't work)
+        string? qrCodePath = null;
+        try
+        {
+            var qrData = $"https://mahafight.com/products/{created.Id}";
+            var qrFileName = $"product_{created.Id}";
+            qrCodePath = await _qrCodeService.GenerateQrCodeAsync(qrData, qrFileName);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail product creation
+            Console.WriteLine($"QR Code generation failed: {ex.Message}");
+        }
 
         return MapToDto(created, qrCodePath);
     }
