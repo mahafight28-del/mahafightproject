@@ -213,16 +213,10 @@ public class InvoiceService
         var allProducts = await _productRepository.GetAllAsync();
         var products = allProducts.Where(p => productIds.Contains(p.Id)).ToList();
 
-        // Simple text-based PDF fallback
-        var content = $"MAHA FIGHT INVOICE\n\nInvoice: {invoice.InvoiceNumber}\nDate: {invoice.InvoiceDate:dd/MM/yyyy}\nTotal: ₹{invoice.TotalAmount:F2}\n\nItems:\n";
-        
-        foreach (var item in saleItems)
-        {
-            var product = products.FirstOrDefault(p => p.Id == item.ProductId);
-            content += $"{product?.Name ?? "Unknown"} - Qty: {item.Quantity} - ₹{item.LineTotal:F2}\n";
-        }
-        
-        return System.Text.Encoding.UTF8.GetBytes(content);
+        var dealer = await _dealerRepository.GetByIdAsync(invoice.DealerId);
+
+        // Use PDF service to generate proper PDF
+        return await _pdfService.GenerateInvoicePdfAsync(invoice, sale, saleItems, products, dealer);
     }
 
     public async Task<IEnumerable<InvoiceResponseDto>> GetDealerInvoicesAsync(Guid dealerId)

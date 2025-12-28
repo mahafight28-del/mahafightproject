@@ -8,7 +8,7 @@ namespace MahaFight.Application.Services;
 
 public class PdfService : IPdfService
 {
-    public Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, Sale sale, List<SaleItem> saleItems, List<Product> products)
+    public Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, Sale sale, List<SaleItem> saleItems, List<Product> products, Dealer? dealer = null)
     {
         try
         {
@@ -41,7 +41,7 @@ public class PdfService : IPdfService
                             });
                             r.ConstantItem(200).AlignRight().Column(c =>
                             {
-                                c.Item().Text($"Dealer: {invoice.DealerId}");
+                                c.Item().Text($"Dealer: {dealer?.BusinessName ?? "Unknown Dealer"}");
                             });
                         });
 
@@ -71,13 +71,96 @@ public class PdfService : IPdfService
             document.GeneratePdf(ms);
             return Task.FromResult(ms.ToArray());
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback: Generate simple text-based PDF content
-            var content = $"MAHA FIGHT INVOICE\n\nInvoice: {invoice.InvoiceNumber}\nDate: {invoice.InvoiceDate:dd/MM/yyyy}\nTotal: ₹{invoice.TotalAmount:F2}";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+            // Fallback: Generate HTML-based invoice
+            var html = GenerateInvoiceHtml(invoice, sale, saleItems, products, dealer);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(html);
             return Task.FromResult(bytes);
         }
+    }
+
+    private string GenerateInvoiceHtml(Invoice invoice, Sale sale, List<SaleItem> saleItems, List<Product> products, Dealer? dealer)
+    {
+        var html = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        .header {{ text-align: center; margin-bottom: 30px; }}
+        .company {{ font-size: 24px; font-weight: bold; }}
+        .invoice-title {{ font-size: 18px; margin-top: 10px; }}
+        .details {{ margin: 20px 0; }}
+        .table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        .table th, .table td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        .table th {{ background-color: #f2f2f2; }}
+        .total {{ text-align: right; margin-top: 20px; }}
+        .footer {{ text-align: center; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <div class='company'>MAHA FIGHT</div>
+        <div class='invoice-title'>INVOICE</div>
+    </div>
+    
+    <div class='details'>
+        <p><strong>Invoice Number:</strong> {invoice.InvoiceNumber}</p>
+        <p><strong>Invoice Date:</strong> {invoice.InvoiceDate:dd/MM/yyyy}</p>
+        <p><strong>Due Date:</strong> {invoice.DueDate:dd/MM/yyyy}</p>
+        <p><strong>Dealer:</strong> {dealer?.BusinessName ?? "Unknown Dealer"}</p>
+    </div>
+    
+    {(string.IsNullOrEmpty(sale.CustomerName) ? "" : $@"
+    <div class='details'>
+        <h3>Customer Details:</h3>
+        <p><strong>Name:</strong> {sale.CustomerName}</p>
+        {(string.IsNullOrEmpty(sale.CustomerEmail) ? "" : $"<p><strong>Email:</strong> {sale.CustomerEmail}</p>")}
+        {(string.IsNullOrEmpty(sale.CustomerPhone) ? "" : $"<p><strong>Phone:</strong> {sale.CustomerPhone}</p>")}
+    </div>
+    ")}
+    
+    <table class='table'>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>";
+
+        foreach (var item in saleItems)
+        {
+            var product = products.FirstOrDefault(p => p.Id == item.ProductId);
+            html += $@"
+            <tr>
+                <td>{product?.Name ?? "Unknown Product"}</td>
+                <td>{item.Quantity}</td>
+                <td>₹{item.UnitPrice:F2}</td>
+                <td>₹{item.LineTotal:F2}</td>
+            </tr>";
+        }
+
+        html += $@"
+        </tbody>
+    </table>
+    
+    <div class='total'>
+        <p><strong>Subtotal: ₹{invoice.Subtotal:F2}</strong></p>
+        <p><strong>Tax: ₹{invoice.TaxAmount:F2}</strong></p>
+        <p style='font-size: 18px;'><strong>Total: ₹{invoice.TotalAmount:F2}</strong></p>
+    </div>
+    
+    <div class='footer'>
+        <p>Thank you for your business!</p>
+    </div>
+</body>
+</html>";
+
+        return html;
     }
 
     private void BuildItemsTable(IContainer container, List<SaleItem> saleItems, List<Product> products)

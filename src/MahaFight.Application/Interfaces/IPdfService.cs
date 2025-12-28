@@ -4,5 +4,5 @@ namespace MahaFight.Application.Interfaces;
 
 public interface IPdfService
 {
-    Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, Sale sale, List<SaleItem> saleItems, List<Product> products);
+    Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice, Sale sale, List<SaleItem> saleItems, List<Product> products, Dealer? dealer = null);
 }
