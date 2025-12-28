@@ -188,6 +188,20 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Enterprise-compliant startup - NO database schema changes
-// Database schema is managed through EF Core migrations only
+// Apply pending migrations on startup for production deployment
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        context.Database.Migrate();
+        app.Logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Error applying database migrations");
+        throw;
+    }
+}
+
 app.Run();
