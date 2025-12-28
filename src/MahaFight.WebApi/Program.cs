@@ -71,8 +71,23 @@ builder.Services.AddScoped<CommissionService>();
 builder.Services.AddScoped<MahaFight.Application.Services.CustomerOrderService>();
 builder.Services.AddScoped<ProductScanService>();
 builder.Services.AddScoped<ISmsService, SmsService>();
-// OTP Services - Use SendGrid for production
-builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+// OTP Services - Try SendGrid first, fallback to SMTP
+builder.Services.AddScoped<IEmailService>(provider =>
+{
+    var config = provider.GetRequiredService<IConfiguration>();
+    var logger = provider.GetRequiredService<ILogger<IEmailService>>();
+    var httpClient = provider.GetRequiredService<HttpClient>();
+    
+    // Check if SendGrid is configured
+    var sendGridKey = config["SendGrid:ApiKey"];
+    if (!string.IsNullOrEmpty(sendGridKey))
+    {
+        return new SendGridEmailService(httpClient, config, provider.GetRequiredService<ILogger<SendGridEmailService>>());
+    }
+    
+    // Fallback to SMTP
+    return new SmtpEmailService(config, provider.GetRequiredService<ILogger<SmtpEmailService>>());
+});
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateDealerValidator>();
 
