@@ -54,6 +54,7 @@ builder.Services.AddForgotPasswordRateLimit();
 builder.Services.AddRateLimiting();
 
 // Dependency Injection
+builder.Services.AddHttpClient();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IJwtService>(sp => new JwtService(secretKey, issuer));
 builder.Services.AddScoped<IAuthService, AuthService>();
