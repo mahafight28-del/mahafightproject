@@ -44,7 +44,7 @@ public class SendGridEmailService : IEmailService
                         subject = subject
                     }
                 },
-                from = new { email = "mahafight28@gmail.com", name = "MAHA FIGHT" },
+                from = new { email = _configuration["SendGrid:FromEmail"] ?? "mahafight28@gmail.com", name = "MAHA FIGHT" },
                 content = new[]
                 {
                     new
