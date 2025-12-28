@@ -188,19 +188,22 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Database initialization - Simple approach like before
+// Database initialization - Run EF migrations
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     try
     {
-        await context.Database.EnsureCreatedAsync();
+        // Run pending migrations
+        await context.Database.MigrateAsync();
+        Console.WriteLine("✅ Database migrations applied successfully");
+        
         await DbInitializer.SeedAsync(context);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Database initialization: {ex.Message}");
+        Console.WriteLine($"Database migration: {ex.Message}");
     }
 }
 
