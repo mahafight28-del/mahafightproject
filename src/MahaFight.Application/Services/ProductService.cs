@@ -3,6 +3,7 @@ using MahaFight.Application.Interfaces;
 using MahaFight.Domain.Entities;
 using MahaFight.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MahaFight.Application.Services;
 
@@ -12,17 +13,20 @@ public class ProductService
     private readonly IRepository<ProductImage> _productImageRepository;
     private readonly IFileUploadService _fileUploadService;
     private readonly IQrCodeService _qrCodeService;
+    private readonly IBarcodeService _barcodeService;
 
     public ProductService(
         IRepository<Product> productRepository,
         IRepository<ProductImage> productImageRepository,
         IFileUploadService fileUploadService,
-        IQrCodeService qrCodeService)
+        IQrCodeService qrCodeService,
+        IBarcodeService barcodeService)
     {
         _productRepository = productRepository;
         _productImageRepository = productImageRepository;
         _fileUploadService = fileUploadService;
         _qrCodeService = qrCodeService;
+        _barcodeService = barcodeService;
     }
 
     public async Task<IEnumerable<ProductResponseDto>> GetAllProductsAsync()
@@ -59,21 +63,42 @@ public class ProductService
 
         var created = await _productRepository.AddAsync(product);
 
-        // Generate QR code (optional - don't fail if it doesn't work)
+        // Generate Barcode & QR code (optional - don't fail if it doesn't work)
         string? qrCodePath = null;
+        string? barcodePath = null;
+        
         try
         {
-            var qrData = $"https://mahafight.com/products/{created.Id}";
-            var qrFileName = $"product_{created.Id}";
-            qrCodePath = await _qrCodeService.GenerateQrCodeAsync(qrData, qrFileName);
+            // Generate barcode using SKU
+            var barcodeFileName = $"barcode_{created.Id}";
+            barcodePath = await _barcodeService.GenerateBarcodeAsync(sku, barcodeFileName);
+            created.Barcode = barcodePath;
         }
         catch (Exception ex)
         {
-            // Log error but don't fail product creation
+            Console.WriteLine($"Barcode generation failed: {ex.Message}");
+        }
+        
+        try
+        {
+            // Generate QR code with product ID only
+            var qrData = created.Id.ToString();
+            var qrFileName = $"qr_{created.Id}";
+            qrCodePath = await _qrCodeService.GenerateQrCodeAsync(qrData, qrFileName);
+            created.QrCode = qrCodePath;
+        }
+        catch (Exception ex)
+        {
             Console.WriteLine($"QR Code generation failed: {ex.Message}");
         }
+        
+        // Update product with barcode/QR paths
+        if (barcodePath != null || qrCodePath != null)
+        {
+            await _productRepository.UpdateAsync(created);
+        }
 
-        return MapToDto(created, qrCodePath);
+        return MapToDto(created, qrCodePath, barcodePath);
     }
 
     public async Task<ProductResponseDto?> UpdateProductAsync(UpdateProductRequest request)
@@ -103,13 +128,12 @@ public class ProductService
         var product = await _productRepository.GetByIdAsync(id);
         if (product == null) return false;
 
-        product.IsActive = false;
-        product.UpdatedAt = DateTime.UtcNow;
-        await _productRepository.UpdateAsync(product);
+        // Hard delete the product
+        await _productRepository.DeleteAsync(id);
         return true;
     }
 
-    private static ProductResponseDto MapToDto(Product product, string? qrCodePath = null)
+    private static ProductResponseDto MapToDto(Product product, string? qrCodePath = null, string? barcodePath = null)
     {
         var commissionPercentage = product.UnitPrice > 0 
             ? (1 - product.CostPrice / product.UnitPrice) * 100 
@@ -134,7 +158,7 @@ public class ProductService
             product.Category,
             product.Brand,
             defaultImage,
-            qrCodePath ?? $"qrcodes/product_{product.Id}.png",
+            qrCodePath ?? product.QrCode ?? $"qrcodes/qr_{product.Id}.png",
             product.IsActive,
             product.CreatedAt,
             product.Sku,
@@ -143,7 +167,8 @@ public class ProductService
             product.MinStockLevel,
             product.Weight,
             product.Dimensions,
-            images
+            images,
+            barcodePath ?? product.Barcode ?? $"barcodes/barcode_{product.Id}.png"
         );
     }
 

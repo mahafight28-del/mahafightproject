@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Test - MAHA FIGHT</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        .container { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 4px; cursor: pointer; }
+        .primary { background: #007bff; color: white; }
+        .success { background: #28a745; color: white; }
+        .danger { background: #dc3545; color: white; }
+        .error { color: red; background: #ffebee; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success-msg { color: green; background: #e8f5e8; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 OTP Login Test</h2>
+        
+        <div id="error" class="error hidden"></div>
+        <div id="success" class="success-msg hidden"></div>
+        
+        <!-- Step 1: Email -->
+        <div id="step1">
+            <h3>Step 1: Enter Email</h3>
+            <input type="email" id="email" placeholder="Enter your email" value="yashjanwa69@gmail.com">
+            <button class="primary" onclick="sendOtp()">Send OTP</button>
+        </div>
+        
+        <!-- Step 2: OTP -->
+        <div id="step2" class="hidden">
+            <h3>Step 2: Enter OTP</h3>
+            <input type="text" id="otp" placeholder="Enter 6-digit OTP" maxlength="6">
+            <button class="success" onclick="verifyOtp()">Login with OTP</button>
+            <button class="primary" onclick="sendOtp()">Resend OTP</button>
+        </div>
+        
+        <!-- Step 3: Success -->
+        <div id="step3" class="hidden">
+            <h3>✅ Login Successful!</h3>
+            <p id="welcomeMsg">Welcome! Redirecting to dashboard...</p>
+            <div style="margin: 20px 0;">
+                <strong>Stored Data:</strong><br>
+                <small>Token: <span id="tokenDisplay"></span></small><br>
+                <small>User: <span id="userDisplay"></span></small>
+            </div>
+            <button class="primary" onclick="window.location.href='/dashboard'">Go to Dashboard</button>
+        </div>
+        
+        <hr>
+        
+        <!-- Forgot Password -->
+        <div id="forgot-password">
+            <h3>🔄 Reset Password</h3>
+            <input type="email" id="resetEmail" placeholder="Enter email for reset" value="yashjanwa69@gmail.com">
+            <button class="danger" onclick="sendResetOtp()">Send Reset OTP</button>
+            
+            <div id="resetOtpStep" class="hidden">
+                <input type="text" id="resetOtp" placeholder="Enter OTP" maxlength="6">
+                <input type="password" id="newPassword" placeholder="New Password">
+                <button class="danger" onclick="resetPassword()">Reset Password</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api/auth';
+        
+        function showError(msg) {
+            document.getElementById('error').textContent = msg;
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('success').classList.add('hidden');
+        }
+        
+        function showSuccess(msg) {
+            document.getElementById('success').textContent = msg;
+            document.getElementById('success').classList.remove('hidden');
+            document.getElementById('error').classList.add('hidden');
+        }
+        
+        async function sendOtp() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showError('Please enter email');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/send-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, purpose: "LOGIN" })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('OTP sent to your email!');
+                    document.getElementById('step1').classList.add('hidden');
+                    document.getElementById('step2').classList.remove('hidden');
+                } else {
+                    showError(data.message);
+                }
+            } catch (err) {
+                showError('Failed to send OTP');
+            }
+        }
+        
+        async function verifyOtp() {
+            const email = document.getElementById('email').value;
+            const otp = document.getElementById('otp').value;
+            
+            if (!otp || otp.length !== 6) {
+                showError('Please enter 6-digit OTP');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/login-with-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+                
+                const data = await response.json();
+                console.log('Login Response:', data); // Debug log
+                
+                if (data.success && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    showSuccess(`Welcome ${data.user.firstName}! Login successful.`);
+                    
+                    // Update success page
+                    document.getElementById('tokenDisplay').textContent = data.token.substring(0, 20) + '...';
+                    document.getElementById('userDisplay').textContent = `${data.user.firstName} (${data.user.role})`;
+                    
+                    document.getElementById('step2').classList.add('hidden');
+                    document.getElementById('step3').classList.remove('hidden');
+                    
+                    // Auto redirect after 3 seconds (optional)
+                    setTimeout(() => {
+                        console.log('Auto-redirecting to dashboard...');
+                        // window.location.href = '/dashboard'; // Uncomment for auto redirect
+                    }, 3000);
+                } else {
+                    showError(data.message || 'Login failed');
+                }
+            } catch (err) {
+                console.error('Login Error:', err);
+                showError('Login failed - Network error');
+            }
+        }
+        
+        async function sendResetOtp() {
+            const email = document.getElementById('resetEmail').value;
+            if (!email) {
+                showError('Please enter email for reset');
+                return;
+            }
+            
+            try {
+                // Step 1: Send OTP
+                const sendResponse = await fetch(`${API_BASE}/send-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, purpose: "RESET_PASSWORD" })
+                });
+                
+                const sendData = await sendResponse.json();
+                
+                if (!sendData.success) {
+                    showError(sendData.message);
+                    return;
+                }
+                
+                // Step 2: Get OTP from user
+                const otp = prompt('Enter the OTP sent to your email:');
+                if (!otp) return;
+                
+                // Step 3: Verify OTP
+                const verifyResponse = await fetch(`${API_BASE}/verify-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp, purpose: "RESET_PASSWORD" })
+                });
+                
+                const verifyData = await verifyResponse.json();
+                
+                if (verifyData.success) {
+                    showSuccess('OTP verified! Now enter new password.');
+                    document.getElementById('resetOtpStep').classList.remove('hidden');
+                } else {
+                    showError(verifyData.message);
+                }
+            } catch (err) {
+                showError('Failed to process reset request');
+            }
+        }
+        
+        async function resetPassword() {
+            const email = document.getElementById('resetEmail').value;
+            const newPassword = document.getElementById('newPassword').value;
+            
+            if (!newPassword) {
+                showError('Please enter new password');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp: '000000', newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('Password reset successfully!');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showError(data.message);
+                }
+            } catch (err) {
+                showError('Failed to reset password');
+            }
+        }
+    </script>
+</body>
+</html>

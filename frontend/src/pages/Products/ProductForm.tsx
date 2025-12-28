@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Card, Form, Input, Button, InputNumber, Select, message, Upload, Image } from 'antd'
+import { Card, Form, Input, Button, InputNumber, Select, message, Upload, Image, Result } from 'antd'
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { createProduct, getProduct, updateProduct, uploadProductImage, deleteProductImage } from '../../services/productService'
 import { Product } from '../../types/product'
+import { useAuth } from '../../context/AuthContext'
 
 const ProductForm: React.FC = () => {
   const { id } = useParams()
@@ -13,6 +14,27 @@ const ProductForm: React.FC = () => {
   const [images, setImages] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [tempProductId, setTempProductId] = useState<string | null>(null)
+  const [productData, setProductData] = useState<Product | null>(null)
+  const { hasRole } = useAuth()
+  const isAdmin = hasRole('Admin')
+
+  // Redirect non-admin users
+  if (!isAdmin) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Result
+          status="403"
+          title="Access Denied"
+          subTitle="Only Admin users can create or edit products."
+          extra={
+            <Button type="primary" onClick={() => navigate('/products')}>
+              Back to Products
+            </Button>
+          }
+        />
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (!id) return
@@ -21,6 +43,7 @@ const ProductForm: React.FC = () => {
       console.log('Product data:', p)
       form.setFieldsValue(p)
       setImages(p.images || [])
+      setProductData(p)
       console.log('Images loaded:', p.images)
     }).finally(() => setLoading(false))
   }, [id])
@@ -69,9 +92,10 @@ const ProductForm: React.FC = () => {
       } else {
         // Create new product
         const response = await createProduct(values)
-        const newProductId = response.data.id
-        setTempProductId(newProductId)
-        message.success('Product created successfully! You can now upload images.')
+        const newProduct = response.data
+        setTempProductId(newProduct.id)
+        setProductData(newProduct)
+        message.success('Product created successfully! Barcode & QR code generated.')
         // Don't navigate away, stay on form to allow image upload
       }
     } catch {
@@ -122,6 +146,38 @@ const ProductForm: React.FC = () => {
           <Form.Item name="dimensions" label="Dimensions">
             <Input placeholder="L x W x H" />
           </Form.Item>
+          
+          {/* Show Barcode & QR Code for existing products */}
+          {(id || tempProductId) && productData && (
+            <Form.Item label="Barcode & QR Code">
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 500 }}>Barcode:</p>
+                  {productData.barcodeUrl ? (
+                    <img 
+                      src={`${(import.meta as any).env?.VITE_API_BASE?.replace('/api', '') || 'http://localhost:5000'}/uploads/${productData.barcodeUrl}`} 
+                      alt="Barcode" 
+                      style={{ height: 60, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                    />
+                  ) : (
+                    <span style={{ color: '#999', fontSize: 12 }}>Generating...</span>
+                  )}
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 500 }}>QR Code:</p>
+                  {productData.qrCodeUrl ? (
+                    <img 
+                      src={`${(import.meta as any).env?.VITE_API_BASE?.replace('/api', '') || 'http://localhost:5000'}/uploads/${productData.qrCodeUrl}`} 
+                      alt="QR Code" 
+                      style={{ height: 60, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                    />
+                  ) : (
+                    <span style={{ color: '#999', fontSize: 12 }}>Generating...</span>
+                  )}
+                </div>
+              </div>
+            </Form.Item>
+          )}
           
           <Form.Item label="Product Images">
             <div style={{ marginBottom: 16 }}>

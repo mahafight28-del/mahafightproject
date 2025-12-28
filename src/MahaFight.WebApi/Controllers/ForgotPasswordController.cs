@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MahaFight.Application.DTOs;
-using MahaFight.Application.Services;
+using MahaFight.Application.Interfaces;
+using MahaFight.Domain.Entities;
 
 namespace MahaFight.WebApi.Controllers;
 
@@ -10,11 +11,13 @@ namespace MahaFight.WebApi.Controllers;
 [EnableRateLimiting("ForgotPasswordPolicy")]
 public class ForgotPasswordController : ControllerBase
 {
-    private readonly ForgotPasswordService _forgotPasswordService;
+    private readonly IOtpService _otpService;
+    private readonly IAuthService _authService;
 
-    public ForgotPasswordController(ForgotPasswordService forgotPasswordService)
+    public ForgotPasswordController(IOtpService otpService, IAuthService authService)
     {
-        _forgotPasswordService = forgotPasswordService;
+        _otpService = otpService;
+        _authService = authService;
     }
 
     [HttpPost("send-otp")]
@@ -23,33 +26,38 @@ public class ForgotPasswordController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
         
-        var result = await _forgotPasswordService.SendOtpAsync(request, ipAddress, userAgent);
+        var (success, message) = await _otpService.SendOtpAsync(request.Email, OtpPurpose.RESET_PASSWORD, ipAddress, userAgent);
         
-        if (result.Success)
-            return Ok(result);
-        
-        return BadRequest(result);
+        var result = new ForgotPasswordResponse(success, message);
+        return success ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("verify-otp")]
     public async Task<ActionResult<ForgotPasswordResponse>> VerifyOtp([FromBody] VerifyOtpRequest request)
     {
-        var result = await _forgotPasswordService.VerifyOtpAsync(request);
+        var (success, message, _) = await _otpService.VerifyOtpAsync(request.Email, request.Otp, OtpPurpose.RESET_PASSWORD);
         
-        if (result.Success)
-            return Ok(result);
-        
-        return BadRequest(result);
+        var result = new ForgotPasswordResponse(success, message);
+        return success ? Ok(result) : BadRequest(result);
     }
 
     [HttpPost("reset-password")]
     public async Task<ActionResult<ForgotPasswordResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        var result = await _forgotPasswordService.ResetPasswordAsync(request);
+        // Verify OTP first
+        var (otpValid, otpMessage, _) = await _otpService.VerifyOtpAsync(request.Identifier, request.Otp, OtpPurpose.RESET_PASSWORD);
         
-        if (result.Success)
-            return Ok(result);
+        if (!otpValid)
+        {
+            return BadRequest(new ForgotPasswordResponse(false, otpMessage));
+        }
+
+        // Reset password using auth service
+        var resetSuccess = await _authService.ResetPasswordByEmailAsync(request.Identifier, request.NewPassword);
         
-        return BadRequest(result);
+        var message = resetSuccess ? "Password reset successfully" : "Failed to reset password";
+        var result = new ForgotPasswordResponse(resetSuccess, message);
+        
+        return resetSuccess ? Ok(result) : BadRequest(result);
     }
 }

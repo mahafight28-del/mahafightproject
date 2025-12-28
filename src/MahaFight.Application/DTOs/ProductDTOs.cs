@@ -50,7 +50,8 @@ public record ProductResponseDto(
     int MinStockLevel,
     decimal? Weight,
     string? Dimensions,
-    IEnumerable<ProductImageDto> Images
+    IEnumerable<ProductImageDto> Images,
+    string? BarcodeUrl
 );
 
 public class CreateProductValidator : AbstractValidator<CreateProductRequest>

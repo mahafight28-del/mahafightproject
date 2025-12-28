@@ -46,6 +46,10 @@ public class InvoiceService
             if (product == null)
                 throw new InvalidOperationException($"Product {item.ProductId} not found");
 
+            // Check stock availability
+            if (product.StockQuantity < item.Quantity)
+                throw new InvalidOperationException($"Insufficient stock for {product.Name}. Available: {product.StockQuantity}, Requested: {item.Quantity}");
+
             var unitPrice = item.UnitPrice ?? product.UnitPrice;
             var lineTotal = unitPrice * item.Quantity;
             subtotal += lineTotal;
@@ -84,6 +88,24 @@ public class InvoiceService
         {
             item.SaleId = createdSale.Id;
             await _saleItemRepository.AddAsync(item);
+        }
+
+        // Update product stock quantities and expire QR codes
+        for (int i = 0; i < products.Count; i++)
+        {
+            var product = products[i];
+            var saleItem = saleItems[i];
+            
+            product.StockQuantity -= saleItem.Quantity;
+            
+            // Expire QR code when product is sold
+            if (product.StockQuantity <= 0)
+            {
+                product.QrCodeExpiresAt = DateTime.UtcNow;
+            }
+            
+            product.UpdatedAt = DateTime.UtcNow;
+            await _productRepository.UpdateAsync(product);
         }
 
         // Auto-create invoice

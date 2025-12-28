@@ -46,6 +46,10 @@ const Login: React.FC = () => {
             <Button type="link" onClick={() => navigate('/forgot-password')}>
               Forgot Password?
             </Button>
+            <br />
+            <Button type="link" onClick={() => navigate('/login-with-otp')}>
+              Login with OTP
+            </Button>
           </Form.Item>
         </Form>
       </Card>

@@ -27,4 +27,7 @@ export type Product = {
   imageUrl?: string
   images?: ProductImage[]
   inStock?: boolean
+  barcodeUrl?: string
+  qrCodeUrl?: string
+  qrCodeExpiresAt?: string
 }

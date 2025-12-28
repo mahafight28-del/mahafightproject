@@ -7,6 +7,10 @@ import Loading from '../components/Loading'
 
 const Login = lazy(() => import('../pages/Login/Login'))
 const ForgotPassword = lazy(() => import('../pages/Login/ForgotPassword'))
+const ForgotPasswordEmail = lazy(() => import('../pages/Login/ForgotPasswordEmail'))
+const OtpVerification = lazy(() => import('../pages/Login/OtpVerification'))
+const ResetPassword = lazy(() => import('../pages/Login/ResetPassword'))
+const LoginWithOtp = lazy(() => import('../pages/Login/LoginWithOtp'))
 const Registration = lazy(() => import('../pages/Dealers/Registration'))
 const FranchiseRegistration = lazy(() => import('../pages/Franchises/Registration'))
 const Dashboard = lazy(() => import('../pages/Dashboard/Dashboard'))
@@ -78,7 +82,10 @@ export const AppRoutes: React.FC = () => {
             
             {/* Admin/Dealer Auth Routes */}
             <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/login-with-otp" element={<LoginWithOtp />} />
+            <Route path="/forgot-password" element={<ForgotPasswordEmail />} />
+            <Route path="/forgot-password/verify" element={<OtpVerification />} />
+            <Route path="/forgot-password/reset" element={<ResetPassword />} />
             <Route path="/register" element={<Registration />} />
             <Route path="/register-franchise" element={<FranchiseRegistration />} />
 

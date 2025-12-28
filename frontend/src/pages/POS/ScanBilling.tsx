@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Button, Input, message } from 'antd';
+import { Card, Button, Input, message, Modal, Row, Col, Space, Divider } from 'antd';
 import type { InputRef } from 'antd';
-import { MinusOutlined, PlusOutlined, ShoppingCartOutlined, ScanOutlined } from '@ant-design/icons';
+import { MinusOutlined, PlusOutlined, ShoppingCartOutlined, ScanOutlined, CameraOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CartItem {
   id: string;
@@ -20,9 +21,11 @@ const ScanBilling: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
   const scanInputRef = useRef<InputRef>(null);
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  let html5QrcodeScanner: Html5QrcodeScanner | null = null;
 
   useEffect(() => {
     if (!token || !user) {
@@ -36,11 +39,9 @@ const ScanBilling: React.FC = () => {
   const scanProduct = async (code: string) => {
     if (!code.trim()) return;
     
-    console.log('Token:', token ? 'Present' : 'Missing');
-    
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/pos/scan/${encodeURIComponent(code)}`, {
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_BASE || 'http://localhost:5000/api'}/pos/scan/${encodeURIComponent(code)}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -108,9 +109,46 @@ const ScanBilling: React.FC = () => {
     }).filter(item => item.quantity > 0));
   };
 
+  const removeFromCart = (id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
+  };
+
   const handleScanSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     scanProduct(scanCode);
+  };
+
+  const startCameraScanning = () => {
+    setShowCamera(true);
+    setTimeout(() => {
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10, 
+          qrbox: { width: Math.min(250, window.innerWidth - 100), height: Math.min(250, window.innerWidth - 100) },
+          aspectRatio: 1.0
+        },
+        false
+      );
+      
+      html5QrcodeScanner.render(
+        (decodedText) => {
+          scanProduct(decodedText);
+          stopCameraScanning();
+        },
+        (error) => {
+          // Ignore errors - they're mostly "No QR code found"
+        }
+      );
+    }, 100);
+  };
+
+  const stopCameraScanning = () => {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }
+    setShowCamera(false);
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
@@ -124,7 +162,6 @@ const ScanBilling: React.FC = () => {
     }
 
     try {
-      // First get dealer ID from user ID
       const dealerResponse = await fetch('/api/dealers', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -172,7 +209,6 @@ const ScanBilling: React.FC = () => {
         setCustomerName('');
         setCustomerPhone('');
         
-        // Download receipt with token
         const receiptResponse = await fetch(`/api/sales/${result.id}/pdf`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -197,94 +233,195 @@ const ScanBilling: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <Card title={<><ScanOutlined /> POS - Scan & Bill</>}>
-        <form onSubmit={handleScanSubmit} className="mb-6">
-          <div className="flex gap-2">
-            <Input
-              ref={scanInputRef}
-              value={scanCode}
-              onChange={(e) => setScanCode(e.target.value)}
-              placeholder="Scan barcode or enter SKU..."
-              style={{ flex: 1 }}
-              disabled={isProcessing}
-            />
-            <Button type="primary" htmlType="submit" disabled={isProcessing}>
-              <ScanOutlined />
-            </Button>
-          </div>
-        </form>
-
-        <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
-          <Input
-            placeholder="Customer Name (Optional)"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <Input
-            placeholder="Customer Phone (Optional)"
-            value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
-            style={{ flex: 1 }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 24 }}>
-          {cart.map(item => (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, border: '1px solid #d9d9d9', borderRadius: 6, marginBottom: 8 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500 }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: '#666' }}>SKU: {item.sku}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Button
-                  size="small"
-                  onClick={() => updateQuantity(item.id, -1)}
-                >
-                  <MinusOutlined />
+    <div style={{ padding: 0 }}>
+      <Row gutter={[16, 16]}>
+        {/* Scanner Section */}
+        <Col xs={24} lg={14}>
+          <Card 
+            title={
+              <Space>
+                <ScanOutlined />
+                <span>Product Scanner</span>
+              </Space>
+            }
+            size="small"
+          >
+            <form onSubmit={handleScanSubmit} style={{ marginBottom: 16 }}>
+              <Space.Compact style={{ width: '100%' }}>
+                <Input
+                  ref={scanInputRef}
+                  value={scanCode}
+                  onChange={(e) => setScanCode(e.target.value)}
+                  placeholder="Scan barcode or enter SKU..."
+                  disabled={isProcessing}
+                  style={{ flex: 1 }}
+                />
+                <Button type="primary" htmlType="submit" disabled={isProcessing}>
+                  <ScanOutlined />
                 </Button>
-                <span style={{ width: 32, textAlign: 'center' }}>{item.quantity}</span>
-                <Button
-                  size="small"
-                  onClick={() => updateQuantity(item.id, 1)}
-                >
-                  <PlusOutlined />
+                <Button onClick={startCameraScanning} disabled={isProcessing}>
+                  <CameraOutlined />
                 </Button>
-              </div>
-              <div style={{ textAlign: 'right', minWidth: 80 }}>
-                <div>₹{item.unitPrice}</div>
-                <div style={{ fontWeight: 500 }}>₹{(item.unitPrice * item.quantity).toFixed(2)}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </Space.Compact>
+            </form>
 
-        {cart.length > 0 && (
-          <div style={{ borderTop: '1px solid #d9d9d9', paddingTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span>Subtotal:</span>
-              <span>₹{subtotal.toFixed(2)}</span>
+            {/* Customer Info */}
+            <Row gutter={[8, 8]}>
+              <Col xs={24} sm={12}>
+                <Input
+                  placeholder="Customer Name (Optional)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  size="middle"
+                />
+              </Col>
+              <Col xs={24} sm={12}>
+                <Input
+                  placeholder="Customer Phone (Optional)"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  size="middle"
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        {/* Cart Section */}
+        <Col xs={24} lg={10}>
+          <Card 
+            title={
+              <Space>
+                <ShoppingCartOutlined />
+                <span>Cart ({cart.length} items)</span>
+              </Space>
+            }
+            size="small"
+            style={{ position: 'sticky', top: 16 }}
+          >
+            <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {cart.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+                  <ShoppingCartOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+                  <div>Cart is empty</div>
+                  <div style={{ fontSize: 12 }}>Scan products to add them</div>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div key={item.id} style={{ 
+                    padding: '12px', 
+                    border: '1px solid #f0f0f0', 
+                    borderRadius: 6, 
+                    marginBottom: 8,
+                    backgroundColor: '#fafafa'
+                  }}>
+                    <Row align="middle" gutter={8}>
+                      <Col flex="auto">
+                        <div style={{ fontWeight: 500, fontSize: 14 }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: '#666' }}>SKU: {item.sku}</div>
+                        <div style={{ fontSize: 12, color: '#1890ff' }}>₹{item.unitPrice} each</div>
+                      </Col>
+                      <Col>
+                        <Space.Compact>
+                          <Button
+                            size="small"
+                            onClick={() => updateQuantity(item.id, -1)}
+                            disabled={item.quantity <= 1}
+                          >
+                            <MinusOutlined />
+                          </Button>
+                          <Input
+                            size="small"
+                            value={item.quantity}
+                            style={{ width: 50, textAlign: 'center' }}
+                            readOnly
+                          />
+                          <Button
+                            size="small"
+                            onClick={() => updateQuantity(item.id, 1)}
+                            disabled={item.quantity >= item.stock}
+                          >
+                            <PlusOutlined />
+                          </Button>
+                        </Space.Compact>
+                      </Col>
+                      <Col>
+                        <div style={{ textAlign: 'right', minWidth: 60 }}>
+                          <div style={{ fontWeight: 600, color: '#52c41a' }}>
+                            ₹{(item.unitPrice * item.quantity).toFixed(2)}
+                          </div>
+                          <Button 
+                            type="text" 
+                            size="small" 
+                            danger
+                            onClick={() => removeFromCart(item.id)}
+                            style={{ padding: 0, height: 'auto' }}
+                          >
+                            <DeleteOutlined />
+                          </Button>
+                        </div>
+                      </Col>
+                    </Row>
+                  </div>
+                ))
+              )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span>Tax (18%):</span>
-              <span>₹{tax.toFixed(2)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: 18, marginBottom: 16 }}>
-              <span>Total:</span>
-              <span>₹{total.toFixed(2)}</span>
-            </div>
-            <Button 
-              onClick={generateBill} 
-              type="primary"
-              size="large"
-              block
-            >
-              <ShoppingCartOutlined /> Generate Bill
-            </Button>
-          </div>
-        )}
-      </Card>
+
+            {cart.length > 0 && (
+              <>
+                <Divider style={{ margin: '16px 0' }} />
+                <div style={{ padding: '0 4px' }}>
+                  <Row justify="space-between" style={{ marginBottom: 4 }}>
+                    <Col>Subtotal:</Col>
+                    <Col>₹{subtotal.toFixed(2)}</Col>
+                  </Row>
+                  <Row justify="space-between" style={{ marginBottom: 4 }}>
+                    <Col>Tax (18%):</Col>
+                    <Col>₹{tax.toFixed(2)}</Col>
+                  </Row>
+                  <Row justify="space-between" style={{ 
+                    fontWeight: 'bold', 
+                    fontSize: 16, 
+                    marginBottom: 16,
+                    padding: '8px 0',
+                    borderTop: '1px solid #d9d9d9'
+                  }}>
+                    <Col>Total:</Col>
+                    <Col style={{ color: '#52c41a' }}>₹{total.toFixed(2)}</Col>
+                  </Row>
+                  <Button 
+                    onClick={generateBill} 
+                    type="primary"
+                    size="large"
+                    block
+                    style={{ height: 48 }}
+                  >
+                    <ShoppingCartOutlined /> Generate Bill
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+        </Col>
+      </Row>
+      
+      <Modal
+        title="Camera Scanner"
+        open={showCamera}
+        onCancel={stopCameraScanning}
+        footer={[
+          <Button key="close" onClick={stopCameraScanning}>
+            Close
+          </Button>
+        ]}
+        width={Math.min(450, window.innerWidth - 32)}
+        centered
+      >
+        <div id="qr-reader" style={{ width: '100%' }}></div>
+        <p style={{ marginTop: 16, textAlign: 'center', color: '#666', fontSize: 12 }}>
+          Point your camera at a barcode or QR code
+        </p>
+      </Modal>
     </div>
   );
 };

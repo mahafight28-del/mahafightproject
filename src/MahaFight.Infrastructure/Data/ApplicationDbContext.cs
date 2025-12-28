@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<ProductImage> ProductImages { get; set; }
     public DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
+    public DbSet<EmailOtp> EmailOtps { get; set; }
+    public DbSet<MobileOtp> MobileOtps { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -366,6 +368,44 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.HasIndex(e => e.Identifier);
             entity.HasIndex(e => new { e.Identifier, e.IsUsed, e.ExpiryTime });
+        });
+
+        // EmailOtp configuration
+        modelBuilder.Entity<EmailOtp>(entity =>
+        {
+            entity.ToTable("email_otps");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Email).HasColumnName("email").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.OtpHash).HasColumnName("otp_hash").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Purpose).HasColumnName("purpose").IsRequired().HasConversion<int>();
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at").IsRequired();
+            entity.Property(e => e.IsUsed).HasColumnName("is_used").HasDefaultValue(false);
+            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").HasDefaultValue(0);
+            entity.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(e => new { e.Email, e.Purpose, e.IsUsed, e.ExpiresAt });
+        });
+
+        // MobileOtp configuration
+        modelBuilder.Entity<MobileOtp>(entity =>
+        {
+            entity.ToTable("mobile_otps");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Phone).HasColumnName("phone").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.OtpHash).HasColumnName("otp_hash").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Purpose).HasColumnName("purpose").IsRequired().HasConversion<int>();
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at").IsRequired();
+            entity.Property(e => e.IsUsed).HasColumnName("is_used").HasDefaultValue(false);
+            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").HasDefaultValue(0);
+            entity.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(e => new { e.Phone, e.Purpose, e.IsUsed, e.ExpiresAt });
         });
     }
 }

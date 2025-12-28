@@ -6,7 +6,10 @@ export const getProducts = async (): Promise<Product[]> => {
   return response.data.data || response.data || []
 }
 export const getProduct = async (id: string): Promise<Product> => (await api.get(`/products/${id}`)).data
-export const createProduct = (p: Partial<Product>) => api.post('/products', p)
+export const createProduct = async (p: Partial<Product>) => {
+  const response = await api.post('/products', p)
+  return { data: response.data } // Wrap response to match expected structure
+}
 export const updateProduct = (id: string, p: Partial<Product>) => api.put(`/products/${id}`, p)
 export const deleteProduct = (id: string) => api.delete(`/products/${id}`)
 export const exportProducts = () => api.get('/products/export', { responseType: 'blob' })

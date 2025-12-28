@@ -90,6 +90,13 @@ const ProductManagement: React.FC = () => {
     { title: 'Status', dataIndex: 'isActive', key: 'isActive', render: (active: boolean) => (
       <Tag color={active !== false ? 'green' : 'red'}>{active !== false ? 'Active' : 'Inactive'}</Tag>
     )},
+    { title: 'Codes', key: 'codes', render: (_: any, rec: Product) => (
+      <div style={{ display: 'flex', gap: 4 }}>
+        {rec.barcodeUrl && <Tag color="blue">Barcode</Tag>}
+        {rec.qrCodeUrl && <Tag color="purple">QR</Tag>}
+        {!rec.barcodeUrl && !rec.qrCodeUrl && <Tag color="gray">None</Tag>}
+      </div>
+    )},
     { title: 'Actions', key: 'actions', render: (_: any, rec: Product) => (
       <Space>
         <Button 

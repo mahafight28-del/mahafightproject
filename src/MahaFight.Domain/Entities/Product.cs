@@ -18,6 +18,7 @@ public class Product : BaseEntity
     // POS Scanning Fields (ADDITIVE)
     public string? Barcode { get; set; }
     public string? QrCode { get; set; }
+    public DateTime? QrCodeExpiresAt { get; set; }
     
     // Navigation properties
     public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();

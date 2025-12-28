@@ -19,7 +19,13 @@ public class PosController : ControllerBase
     [HttpGet("scan/{code}")]
     public async Task<IActionResult> ScanProduct(string code)
     {
-        var product = await _scanService.GetProductByCodeAsync(code);
+        // URL decode the code
+        var decodedCode = Uri.UnescapeDataString(code);
+        Console.WriteLine($"[DEBUG] Original code: {code}");
+        Console.WriteLine($"[DEBUG] Decoded code: {decodedCode}");
+        
+        var product = await _scanService.GetProductByCodeAsync(decodedCode);
+        Console.WriteLine($"[DEBUG] Product result: {(product == null ? "NULL" : product.Name)}");
         
         if (product == null)
             return NotFound(new { message = "Product not found" });

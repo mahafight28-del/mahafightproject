@@ -51,6 +51,7 @@ builder.Services.AddCorsPolicy(builder.Configuration);
 
 // Rate Limiting
 builder.Services.AddForgotPasswordRateLimit();
+builder.Services.AddRateLimiting();
 
 // Dependency Injection
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -59,6 +60,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IQrCodeService, QrCodeService>();
+builder.Services.AddScoped<IBarcodeService, BarcodeService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ICsvExportService, CsvExportService>();
 builder.Services.AddScoped<DealerService>();
@@ -66,9 +68,11 @@ builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<InvoiceService>();
 builder.Services.AddScoped<CommissionService>();
 builder.Services.AddScoped<MahaFight.Application.Services.CustomerOrderService>();
-builder.Services.AddScoped<ForgotPasswordService>();
 builder.Services.AddScoped<ProductScanService>();
 builder.Services.AddScoped<ISmsService, SmsService>();
+// OTP Services
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateDealerValidator>();
 
 // Controllers
@@ -107,6 +111,10 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Configure for Render deployment
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://0.0.0.0:{port}");
+
 // Security Headers Middleware
 app.Use(async (context, next) =>
 {
@@ -137,6 +145,18 @@ var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 if (!Directory.Exists(uploadsPath))
 {
     Directory.CreateDirectory(uploadsPath);
+}
+
+// Create barcode and QR code directories
+var barcodesPath = Path.Combine(uploadsPath, "barcodes");
+var qrcodesPath = Path.Combine(uploadsPath, "qrcodes");
+if (!Directory.Exists(barcodesPath))
+{
+    Directory.CreateDirectory(barcodesPath);
+}
+if (!Directory.Exists(qrcodesPath))
+{
+    Directory.CreateDirectory(qrcodesPath);
 }
 
 app.UseStaticFiles(new StaticFileOptions

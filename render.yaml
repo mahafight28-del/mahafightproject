@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: mahafight-api
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    region: singapore
+    branch: main
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:$PORT
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: mahafight-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JwtSettings__SecretKey
+        sync: false
+      - key: JwtSettings__Issuer
+        value: MahaFight
+      - key: JwtSettings__Audience
+        value: MahaFight-Users
+      - key: JwtSettings__ExpiryInMinutes
+        value: 60
+
+databases:
+  - name: mahafight-db
+    databaseName: MahaFightDB
+    user: mahafight_user
+    plan: free
+    region: singapore

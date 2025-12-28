@@ -16,6 +16,16 @@ public static class RateLimitConfiguration
                         PermitLimit = 100,
                         Window = TimeSpan.FromMinutes(1)
                     }));
+
+            // OTP Rate Limiting
+            options.AddPolicy("OtpPolicy", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: partition => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
         });
     }
 }
