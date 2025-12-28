@@ -188,22 +188,38 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Database initialization - Run EF migrations
+// Database initialization - Add missing columns via code
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     try
     {
-        // Run pending migrations
-        await context.Database.MigrateAsync();
-        Console.WriteLine("✅ Database migrations applied successfully");
+        // Add missing columns via raw SQL
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE products 
+            ADD COLUMN IF NOT EXISTS barcode character varying(100),
+            ADD COLUMN IF NOT EXISTS qr_code character varying(500),
+            ADD COLUMN IF NOT EXISTS qr_code_expires_at timestamp with time zone;
+            
+            CREATE TABLE IF NOT EXISTS email_otps (
+                id uuid NOT NULL DEFAULT gen_random_uuid(),
+                email character varying(255) NOT NULL,
+                otp_code character varying(10) NOT NULL,
+                expires_at timestamp with time zone NOT NULL,
+                is_used boolean NOT NULL DEFAULT FALSE,
+                created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at timestamp with time zone,
+                CONSTRAINT PK_email_otps PRIMARY KEY (id)
+            );
+        ");
         
+        Console.WriteLine("✅ Database columns added successfully");
         await DbInitializer.SeedAsync(context);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Database migration: {ex.Message}");
+        Console.WriteLine($"Database update: {ex.Message}");
     }
 }
 
