@@ -135,10 +135,29 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // Enable Swagger in production for Render
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MahaFight API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
-app.UseHttpsRedirection();
+// Production mein HTTPS redirect disable for Render
+if (!app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowedOrigins");
 app.UseStaticFiles();
+
+// Add default route for health check
+app.MapGet("/", () => "MahaFight API is running! Visit /swagger for documentation.");
+app.MapGet("/health", () => "Healthy");
 
 // Create uploads directory if it doesn't exist
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
