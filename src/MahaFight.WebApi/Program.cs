@@ -188,20 +188,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Apply pending migrations on startup for production deployment
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
-    {
-        context.Database.Migrate();
-        app.Logger.LogInformation("Database migrations applied successfully");
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogError(ex, "Error applying database migrations");
-        throw;
-    }
-}
+// Skip automatic migrations for production - use manual SQL script instead
+// Production database schema is managed via fix-production-db.sql
+app.Logger.LogInformation("Application started - database schema managed externally");
 
 app.Run();
