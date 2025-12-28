@@ -70,8 +70,8 @@ builder.Services.AddScoped<CommissionService>();
 builder.Services.AddScoped<MahaFight.Application.Services.CustomerOrderService>();
 builder.Services.AddScoped<ProductScanService>();
 builder.Services.AddScoped<ISmsService, SmsService>();
-// OTP Services
-builder.Services.AddScoped<IEmailService, EmailService>();
+// OTP Services - Use SendGrid for production
+builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateDealerValidator>();
 
