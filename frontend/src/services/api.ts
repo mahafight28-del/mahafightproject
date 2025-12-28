@@ -1,8 +1,20 @@
 import axios from 'axios'
 import { getToken, setToken, clearToken } from '../utils/token'
 
+// Production API URL for Render deployment
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    // Check if we're on production domain
+    if (window.location.hostname.includes('mahafight-front.onrender.com')) {
+      return 'https://mahafight-api.onrender.com/api'
+    }
+  }
+  // Fallback to environment variable or localhost
+  return (import.meta as any).env?.VITE_API_BASE || 'http://localhost:5000/api'
+}
+
 const api = axios.create({
-  baseURL: (import.meta as any).env?.VITE_API_BASE || 'http://localhost:5000/api',
+  baseURL: getBaseURL(),
   withCredentials: true,
 })
 
