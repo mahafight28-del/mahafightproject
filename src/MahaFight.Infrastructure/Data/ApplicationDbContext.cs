@@ -117,6 +117,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.StockQuantity).HasColumnName("stock_quantity").IsRequired().HasDefaultValue(0);
             entity.Property(e => e.MinStockLevel).HasColumnName("min_stock_level").HasDefaultValue(10);
             entity.Property(e => e.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
+            // CRITICAL FIX: Map new columns to correct database column names
+            entity.Property(e => e.Barcode).HasColumnName("barcode").HasMaxLength(100);
+            entity.Property(e => e.QrCode).HasColumnName("qr_code").HasMaxLength(500);
+            entity.Property(e => e.QrCodeExpiresAt).HasColumnName("qr_code_expires_at");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.HasIndex(e => e.Sku).IsUnique();
