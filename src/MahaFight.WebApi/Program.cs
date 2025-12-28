@@ -188,11 +188,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Database initialization
+// Database initialization with migrations
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await context.Database.EnsureCreatedAsync();
+    
+    // Run migrations in production
+    if (app.Environment.IsProduction())
+    {
+        await context.Database.MigrateAsync();
+    }
+    else
+    {
+        await context.Database.EnsureCreatedAsync();
+    }
+    
     await DbInitializer.SeedAsync(context);
 }
 
