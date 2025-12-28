@@ -49,7 +49,10 @@ public class OtpService : IOtpService
             Purpose = purpose,
             ExpiresAt = DateTime.UtcNow.AddMinutes(5),
             IpAddress = ipAddress,
-            UserAgent = userAgent
+            UserAgent = userAgent,
+            CreatedAt = DateTime.UtcNow,
+            AttemptCount = 0,
+            IsUsed = false
         };
 
         await _emailOtpRepository.AddAsync(emailOtp);
@@ -80,11 +83,13 @@ public class OtpService : IOtpService
         }
 
         emailOtp.AttemptCount++;
+        emailOtp.UpdatedAt = DateTime.UtcNow;
         await _emailOtpRepository.UpdateAsync(emailOtp);
 
         if (emailOtp.AttemptCount > 3)
         {
             emailOtp.IsUsed = true;
+            emailOtp.UpdatedAt = DateTime.UtcNow;
             await _emailOtpRepository.UpdateAsync(emailOtp);
             return (false, "Too many attempts. Please request a new OTP", null);
         }
@@ -95,6 +100,7 @@ public class OtpService : IOtpService
         }
 
         emailOtp.IsUsed = true;
+        emailOtp.UpdatedAt = DateTime.UtcNow;
         await _emailOtpRepository.UpdateAsync(emailOtp);
 
         string? token = null;
