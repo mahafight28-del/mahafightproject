@@ -188,115 +188,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Database initialization with safe migrations
+// Database initialization - Simple approach like before
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     try
     {
-        // Check if database exists and has tables
-        var canConnect = await context.Database.CanConnectAsync();
-        
-        if (canConnect)
-        {
-            // Execute manual schema update for existing database
-            try
-            {
-                var updateScript = @"
-                    DO $$
-                    BEGIN
-                        -- Add Barcode column
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                                       WHERE table_name = 'products' AND column_name = 'barcode') THEN
-                            ALTER TABLE products ADD COLUMN barcode character varying(100);
-                        END IF;
-                        
-                        -- Add QrCode column
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                                       WHERE table_name = 'products' AND column_name = 'qr_code') THEN
-                            ALTER TABLE products ADD COLUMN qr_code character varying(500);
-                        END IF;
-                        
-                        -- Add QrCodeExpiresAt column
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                                       WHERE table_name = 'products' AND column_name = 'qr_code_expires_at') THEN
-                            ALTER TABLE products ADD COLUMN qr_code_expires_at timestamp with time zone;
-                        END IF;
-                    END
-                    $$;
-                    
-                    -- Create EmailOtp table if it doesn't exist
-                    CREATE TABLE IF NOT EXISTS email_otps (
-                        id uuid NOT NULL DEFAULT gen_random_uuid(),
-                        email character varying(255) NOT NULL,
-                        otp_code character varying(10) NOT NULL,
-                        expires_at timestamp with time zone NOT NULL,
-                        is_used boolean NOT NULL DEFAULT FALSE,
-                        created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at timestamp with time zone,
-                        CONSTRAINT \"PK_email_otps\" PRIMARY KEY (id)
-                    );
-                    
-                    -- Create MobileOtp table if it doesn't exist
-                    CREATE TABLE IF NOT EXISTS mobile_otps (
-                        id uuid NOT NULL DEFAULT gen_random_uuid(),
-                        mobile_number character varying(20) NOT NULL,
-                        otp_code character varying(10) NOT NULL,
-                        expires_at timestamp with time zone NOT NULL,
-                        is_used boolean NOT NULL DEFAULT FALSE,
-                        created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at timestamp with time zone,
-                        CONSTRAINT \"PK_mobile_otps\" PRIMARY KEY (id)
-                    );
-                ";
-                
-                await context.Database.ExecuteSqlRawAsync(updateScript);
-                Console.WriteLine("Database schema updated successfully");
-            }
-            catch (Exception schemaEx)
-            {
-                Console.WriteLine($"Schema update failed: {schemaEx.Message}");
-            }
-            
-            // Try to get pending migrations
-            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-            
-            if (pendingMigrations.Any())
-            {
-                Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
-                // Apply only pending migrations
-                await context.Database.MigrateAsync();
-            }
-        }
-        else
-        {
-            // Database doesn't exist, create it
-            await context.Database.EnsureCreatedAsync();
-        }
-    }
-    catch (Exception ex)
-    {
-        // If migration fails, try to ensure database is created
-        try
-        {
-            await context.Database.EnsureCreatedAsync();
-        }
-        catch
-        {
-            // Log error but don't crash the application
-            Console.WriteLine($"Database initialization failed: {ex.Message}");
-        }
-    }
-    
-    // Seed data
-    try
-    {
+        await context.Database.EnsureCreatedAsync();
         await DbInitializer.SeedAsync(context);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Data seeding failed: {ex.Message}");
+        Console.WriteLine($"Database initialization: {ex.Message}");
     }
 }
 
