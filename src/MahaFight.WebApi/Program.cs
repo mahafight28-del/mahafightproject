@@ -188,11 +188,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Skip database initialization in production - tables already exist
-// using (var scope = app.Services.CreateScope())
-// {
-//     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//     // Database operations removed for production safety
-// }
-
+// Enterprise-compliant startup - NO database schema changes
+// Database schema is managed through EF Core migrations only
 app.Run();

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MahaFight.Domain.Entities;
+using MahaFight.Infrastructure.Data.Configurations;
 
 namespace MahaFight.Infrastructure.Data;
 
@@ -28,6 +29,10 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Apply enterprise-grade entity type configurations
+        modelBuilder.ApplyConfiguration(new EmailOtpConfiguration());
+        modelBuilder.ApplyConfiguration(new MobileOtpConfiguration());
+        modelBuilder.ApplyConfiguration(new ProductConfiguration());
         // User configuration
         modelBuilder.Entity<User>(entity =>
         {
@@ -100,31 +105,7 @@ public class ApplicationDbContext : DbContext
         });
 
         // Product configuration
-        modelBuilder.Entity<Product>(entity =>
-        {
-            entity.ToTable("products");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Sku).HasColumnName("sku").IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Name).HasColumnName("name").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Category).HasColumnName("category").IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Brand).HasColumnName("brand").HasMaxLength(50);
-            entity.Property(e => e.UnitPrice).HasColumnName("unit_price").HasPrecision(10, 2).IsRequired();
-            entity.Property(e => e.CostPrice).HasColumnName("cost_price").HasPrecision(10, 2).IsRequired();
-            entity.Property(e => e.Weight).HasColumnName("weight").HasPrecision(8, 2);
-            entity.Property(e => e.Dimensions).HasColumnName("dimensions").HasMaxLength(50);
-            entity.Property(e => e.StockQuantity).HasColumnName("stock_quantity").IsRequired().HasDefaultValue(0);
-            entity.Property(e => e.MinStockLevel).HasColumnName("min_stock_level").HasDefaultValue(10);
-            entity.Property(e => e.IsActive).HasColumnName("is_active").IsRequired().HasDefaultValue(true);
-            // CRITICAL FIX: Map new columns to correct database column names
-            entity.Property(e => e.Barcode).HasColumnName("barcode").HasMaxLength(100);
-            entity.Property(e => e.QrCode).HasColumnName("qr_code").HasMaxLength(500);
-            entity.Property(e => e.QrCodeExpiresAt).HasColumnName("qr_code_expires_at");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            entity.HasIndex(e => e.Sku).IsUnique();
-        });
+        // Moved to ProductConfiguration.cs for enterprise compliance
 
         // Sale configuration
         modelBuilder.Entity<Sale>(entity =>
@@ -375,41 +356,9 @@ public class ApplicationDbContext : DbContext
         });
 
         // EmailOtp configuration
-        modelBuilder.Entity<EmailOtp>(entity =>
-        {
-            entity.ToTable("email_otps");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Email).HasColumnName("email").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.OtpHash).HasColumnName("otp_hash").IsRequired().HasMaxLength(255);
-            entity.Property(e => e.Purpose).HasColumnName("purpose").IsRequired().HasConversion<int>();
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at").IsRequired();
-            entity.Property(e => e.IsUsed).HasColumnName("is_used").HasDefaultValue(false);
-            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").HasDefaultValue(0);
-            entity.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
-            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(50);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            entity.HasIndex(e => new { e.Email, e.Purpose, e.IsUsed, e.ExpiresAt });
-        });
+        // Moved to EmailOtpConfiguration.cs for enterprise compliance
 
-        // MobileOtp configuration
-        modelBuilder.Entity<MobileOtp>(entity =>
-        {
-            entity.ToTable("mobile_otps");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Phone).HasColumnName("phone").IsRequired().HasMaxLength(20);
-            entity.Property(e => e.OtpHash).HasColumnName("otp_hash").IsRequired().HasMaxLength(255);
-            entity.Property(e => e.Purpose).HasColumnName("purpose").IsRequired().HasConversion<int>();
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at").IsRequired();
-            entity.Property(e => e.IsUsed).HasColumnName("is_used").HasDefaultValue(false);
-            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").HasDefaultValue(0);
-            entity.Property(e => e.UserAgent).HasColumnName("user_agent").HasMaxLength(500);
-            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(50);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").IsRequired();
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            entity.HasIndex(e => new { e.Phone, e.Purpose, e.IsUsed, e.ExpiresAt });
-        });
+        // MobileOtp configuration  
+        // Moved to MobileOtpConfiguration.cs for enterprise compliance
     }
 }
