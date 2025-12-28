@@ -188,6 +188,35 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Production diagnostics and database connectivity test
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+    
+    logger.LogInformation("Environment: {Environment}", env.EnvironmentName);
+    logger.LogInformation("Connection String: {ConnectionString}", 
+        builder.Configuration.GetConnectionString("DefaultConnection")?.Substring(0, 50) + "...");
+    
+    // Test database connectivity
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var canConnect = await context.Database.CanConnectAsync();
+        logger.LogInformation("Database connectivity: {CanConnect}", canConnect);
+        
+        if (canConnect)
+        {
+            var otpCount = await context.EmailOtps.CountAsync();
+            logger.LogInformation("EmailOtps table accessible, count: {Count}", otpCount);
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database connectivity test failed");
+    }
+}
+
 // Skip automatic migrations for production - use manual SQL script instead
 // Production database schema is managed via fix-production-db.sql
 app.Logger.LogInformation("Application started - database schema managed externally");
