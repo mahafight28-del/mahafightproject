@@ -43,6 +43,16 @@ public class ProductService
 
     public async Task<ProductResponseDto> CreateProductAsync(CreateProductRequest request)
     {
+        // Check for duplicate SKU first
+        if (!string.IsNullOrEmpty(request.Sku))
+        {
+            var products = await _productRepository.GetAllAsync();
+            if (products.Any(p => p.Sku.ToLower() == request.Sku.ToLower()))
+            {
+                throw new InvalidOperationException($"Product with SKU '{request.Sku}' already exists");
+            }
+        }
+        
         var sku = request.Sku ?? await GenerateUniqueSku(request.Name);
         
         var product = new Product
